@@ -1,0 +1,25 @@
+{
+  "name": "모바일 오목 (고급 AI)",
+  "short_name": "오목",
+  "description": "모바일에서 즐기는 오목 게임 – 흑은 사용자, 백은 고급 AI",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
