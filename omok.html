@@ -1,0 +1,502 @@
+<!doctype html>
+
+<html lang="ko">    
+<head>    
+  <meta charset="utf-8" />    
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />    
+  <title>모바일 오목 (고급 AI · 좌표 입력)</title>    
+  <style>    
+    :root{    
+      --bg:#0b1020; --panel:#0f172a; --panel2:#111827; --text:#e6edf6; --muted:#9aa7bd; --accent:#60a5fa; --warn:#ef4444; --ok:#22c55e;    
+      --wood1:#f1d6a9; --wood2:#d7b787; --grid:#8b5e34; --frame:#784e24;    
+    }    
+    *{box-sizing:border-box}    
+    html,body{height:100%;margin:0}    
+    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;background: radial-gradient(1200px 800px at 20% 0%, #111a35 0%, var(--bg) 55%);color:var(--text);-webkit-tap-highlight-color: transparent;}    
+    .wrap{min-height:100%;display:flex;flex-direction:column;gap:12px;padding: calc(env(safe-area-inset-top,0) + 12px) 12px calc(env(safe-area-inset-bottom,0) + 16px)}    
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}    
+    .title{font-weight:800;letter-spacing:.2px;font-size:clamp(18px,4.8vw,22px)}    
+    .controls{display:flex;gap:8px;flex-wrap:wrap}    
+    select, input[type="text"], button{background:var(--panel2);color:var(--text);border:1px solid #1f2937;border-radius:12px;padding:10px 12px;font-size:14px;font-weight:700;box-shadow: 0 4px 12px rgba(0,0,0,.25)}    
+    input[type="text"]{min-width:120px;text-transform:uppercase;letter-spacing:.3px}    
+    button:active{transform:scale(.98)}    
+    button.primary{background:var(--accent);border-color:transparent}    
+    button.warn{background:#b91c1c}    
+    .status{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--panel);padding:10px 12px;border-radius:12px;border:1px solid #1f2937}    
+    .status .msg{font-size:14px}    
+    .status .sub{font-size:12px;color:var(--muted)}    
+    .spin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid #64748b;border-top-color:#cbd5e1;vertical-align:-2px;animation:spin 0.8s linear infinite;margin-right:6px}    
+    @keyframes spin{to{transform:rotate(360deg)}}    
+    .board-wrap{position:relative;aspect-ratio:1/1; width:min(96vw, 680px); margin:0 auto; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.45)}    
+    canvas{width:100%; height:100%; display:block; background:linear-gradient(145deg,var(--wood1),var(--wood2)); touch-action: none;}    
+    .labels{position:absolute;inset:0;pointer-events:none;color:#2b2b2b;font-weight:800;opacity:.55}    
+    .labels .col{position:absolute;top:4px;transform:translateX(-50%)}    
+    .labels .row{position:absolute;left:6px;transform:translateY(-50%)}    
+    .hint{margin-top:2px;text-align:center;color:var(--muted);font-size:12px}    
+    footer{margin-top:4px;text-align:center;color:var(--muted);font-size:12px}    
+  </style>    
+</head>    
+<body>    
+  <div class="wrap">    
+    <header>    
+      <div class="title">모바일 오목 (고급 AI · 좌표 입력)</div>    
+      <div class="controls">    
+        <select id="sizeSel" aria-label="보드 크기">    
+          <option value="15" selected>15×15</option>    
+          <option value="19">19×19</option>    
+        </select>    
+        <select id="levelSel" aria-label="난이도">    
+          <option value="easy">초급</option>    
+          <option value="mid">중급</option>    
+          <option value="pro" selected>고급</option>    
+        </select>    
+        <input id="coord" type="text" placeholder="예: H8 또는 8,8" inputmode="latin" />    
+        <button id="playBtn" class="primary">흑 두기</button>    
+        <button id="undoBtn">↶ 되돌리기</button>    
+        <button id="resetBtn" class="warn">⟲ 초기화</button>    
+      </div>    
+    </header>  
+    <div class="status" role="status" aria-live="polite" aria-atomic="true">    
+      <div class="msg" id="msg">흑(사용자)의 차례입니다 — 좌표를 입력하고 “흑 두기”를 누르세요</div>    
+      <div class="sub" id="sub">A1은 좌상단, 열은 A→…, 행은 1→… • 백(○)은 자동 고급 AI</div>    
+    </div>  
+    <div class="board-wrap">    
+      <canvas id="board" aria-label="오목 보드" tabindex="0"></canvas>    
+      <div class="labels" id="labels"></div>    
+    </div>  
+    <div class="hint">좌표 형식: <b>H8</b>, <b>8H</b>, <b>8,8</b>, <b>8 8</b> (1부터 시작)</div>    
+    <footer>터치로도 흑 착수 가능 • 안전영역/고해상도 대응</footer>  
+  </div>  
+  <script>    
+    // ===== Elements & State =====    
+    const canvas = document.getElementById('board');    
+    const ctx = canvas.getContext('2d');    
+    const msgEl = document.getElementById('msg');    
+    const subEl = document.getElementById('sub');    
+    const labelsEl = document.getElementById('labels');    
+    const playBtn = document.getElementById('playBtn');    
+    const coordInput = document.getElementById('coord');    
+    const undoBtn = document.getElementById('undoBtn');    
+    const resetBtn = document.getElementById('resetBtn');    
+    const sizeSel = document.getElementById('sizeSel');    
+    const levelSel = document.getElementById('levelSel');  
+
+    let N = parseInt(sizeSel.value,10);    
+    let grid = [];    
+    let turn = 1; // 1=흑(사용자), 2=백(AI)    
+    let moves = []; // {i,j,color}    
+    let winner = 0; // 0 none, 1 black, 2 white    
+    let winLine = null;    
+    let aiThinking = false;    
+
+    // layout    
+    let padding = 24, cell = 0, DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));    
+
+    // ===== Init =====    
+    function initBoard(){    
+      grid = Array.from({length:N}, () => Array(N).fill(0));    
+      turn = 1; moves = []; winner = 0; winLine = null; aiThinking = false;    
+      updateStatus(); resizeCanvas(); drawAll(); drawLabels(); coordInput.value = '';    
+    }    
+
+    // ===== Layout & Render =====    
+    function resizeCanvas(){    
+      const rect = canvas.parentElement.getBoundingClientRect();    
+      const w = Math.floor(rect.width);    
+      const h = Math.floor(rect.height);    
+      canvas.width = Math.floor(w * DPR);    
+      canvas.height = Math.floor(h * DPR);    
+      canvas.style.width = w + 'px';    
+      canvas.style.height = h + 'px';    
+      ctx.setTransform(DPR,0,0,DPR,0,0);    
+      const minDim = Math.min(w, h);    
+      const logicalPadding = Math.max(16, Math.min(28, Math.round(minDim * 0.05)));    
+      padding = logicalPadding;    
+      cell = (minDim - padding*2) / (N-1);    
+    }    
+
+    function drawBoard(){    
+      const {width:W, height:H} = canvas.getBoundingClientRect();    
+      ctx.clearRect(0,0,W,H);    
+      ctx.save();    
+      ctx.translate((W - ((N-1)*cell + padding*2))/2, (H - ((N-1)*cell + padding*2))/2);    
+      ctx.translate(padding, padding);    
+      // frame    
+      ctx.strokeStyle = getCss('--frame'); ctx.lineWidth = 2;    
+      ctx.strokeRect(-10, -10, (N-1)*cell + 20, (N-1)*cell + 20);    
+      // grid    
+      ctx.strokeStyle = getCss('--grid'); ctx.lineWidth = 1;    
+      for(let i=0;i<N;i++){    
+        const y = i*cell; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo((N-1)*cell, y); ctx.stroke();    
+      }    
+      for(let j=0;j<N;j++){    
+        const x = j*cell; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, (N-1)*cell); ctx.stroke();    
+      }    
+      // star points    
+      const star = (i,j) => { ctx.beginPath(); ctx.fillStyle = '#3b2b19'; ctx.arc(j*cell, i*cell, Math.max(2, cell*0.06), 0, Math.PI*2); ctx.fill(); };    
+      const stars15 = [[3,3],[3,11],[7,7],[11,3],[11,11]];    
+      const stars19 = [[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]];    
+      (N===15?stars15:stars19).forEach(([i,j])=>star(i,j));    
+
+      if(winLine){    
+        ctx.strokeStyle = 'rgba(34,197,94,.9)'; ctx.lineWidth = 6; ctx.lineCap='round';    
+        const {from:[fi,fj], to:[ti,tj]} = winLine;    
+        ctx.beginPath(); ctx.moveTo(fj*cell, fi*cell); ctx.lineTo(tj*cell, ti*cell); ctx.stroke();    
+      }    
+      ctx.restore();    
+    }    
+
+    function drawStone(i,j,kind){    
+      const {width:W, height:H} = canvas.getBoundingClientRect();    
+      ctx.save();    
+      ctx.translate((W - ((N-1)*cell + padding*2))/2 + padding, (H - ((N-1)*cell + padding*2))/2 + padding);    
+      const x = j*cell, y = i*cell; const r = Math.max(6, cell*0.42);    
+      // shadow    
+      ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.arc(x+1.5, y+2, r, 0, Math.PI*2); ctx.fill();    
+      // stone    
+      const grd = ctx.createRadialGradient(x - r*0.4, y - r*0.6, r*0.2, x, y, r);    
+      if(kind===1){ grd.addColorStop(0,'#444'); grd.addColorStop(1,'#0a0a0a'); }    
+      else { grd.addColorStop(0,'#fff'); grd.addColorStop(1,'#cfcfcf'); }    
+      ctx.beginPath(); ctx.fillStyle = grd; ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();    
+      // last move ring    
+      const last = moves[moves.length-1];    
+      if(last && last.i===i && last.j===j){ ctx.lineWidth = 2.5; ctx.strokeStyle = kind===1? '#6ee7ff' : '#7c3aed'; ctx.beginPath(); ctx.arc(x, y, r*0.6, 0, Math.PI*2); ctx.stroke(); }    
+      ctx.restore();    
+    }    
+
+    function drawStones(){ for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(grid[i][j]) drawStone(i,j,grid[i][j]); }    
+    function drawAll(){ drawBoard(); drawStones(); }    
+
+    // Labels around the board (A.. / 1..)    
+    function drawLabels(){    
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';    
+      const {width:W, height:H} = canvas.getBoundingClientRect();    
+      const boardPx = (N-1)*cell + padding*2;    
+      const originX = (W - boardPx)/2;    
+      const originY = (H - boardPx)/2;    
+      let html = '';    
+      for(let j=0;j<N;j++){    
+        const x = originX + padding + j*cell; html += `<div class="col" style="left:${x}px">${letters[j]}</div>`;    
+      }    
+      for(let i=0;i<N;i++){    
+        const y = originY + padding + i*cell; html += `<div class="row" style="top:${y}px">${i+1}</div>`;    
+      }    
+      labelsEl.innerHTML = html;    
+    }    
+
+    // ===== Helpers =====    
+    function getCss(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }    
+    function inBounds(i,j){ return i>=0 && j>=0 && i<N && j<N; }    
+
+    // Win check    
+    const DIRS = [[0,1],[1,0],[1,1],[1,-1]];    
+    function checkWin(i,j){    
+      const who = grid[i][j]; if(!who) return null;    
+      for(const [di,dj] of DIRS){    
+        let count = 1; let minI=i, minJ=j, maxI=i, maxJ=j;    
+        for(let k=1;k<5;k++){const ni=i+di*k,nj=j+dj*k; if(!inBounds(ni,nj)||grid[ni][nj]!==who) break; count++; maxI=ni; maxJ=nj;}    
+        for(let k=1;k<5;k++){const ni=i-di*k,nj=j-dj*k; if(!inBounds(ni,nj)||grid[ni][nj]!==who) break; count++; minI=ni; minJ=nj;}    
+        if(count>=5){ return {winner:who, line:{from:[minI,minJ], to:[maxI,maxJ]}}; }    
+      }    
+      return null;    
+    }    
+
+    function place(i,j,color){ if(grid[i][j]!==0 || winner) return false; grid[i][j]=color; moves.push({i,j,color}); const w = checkWin(i,j); if(w){ winner = w.winner; winLine = w.line; } return true; }    
+    function unplace(){ const last=moves.pop(); if(!last) return; grid[last.i][last.j]=0; winner=0; winLine=null; }    
+
+    function updateStatus(){    
+      if(winner){ msgEl.textContent = (winner===1? '흑(사용자) 승리!' : '백(컴퓨터) 승리!'); subEl.textContent = '게임 종료 · ⟲ 초기화로 새 게임'; return; }    
+      if(aiThinking){ msgEl.innerHTML = '<span class="spin"></span>백(컴퓨터) 생각 중…'; subEl.textContent = '고급 탐색(알파-베타·위협 우선)'; return; }    
+      msgEl.textContent = (turn===1? '흑(사용자)의 차례 — 좌표 입력 혹은 보드를 터치' : '백(컴퓨터)의 차례');    
+      subEl.textContent = '예: H8, 8H, 8,8, 8 8 (1부터 시작)';    
+    }    
+
+    // ===== Coordinate parsing (A1/H8/8H/8,8/8 8) =====    
+    function parseCoord(s){    
+      if(!s) return null; s = s.trim().toUpperCase();    
+      s = s.replace(/[，,;]+/g,' ').replace(/\s+/g,' ').trim();    
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';    
+      const isLetter = ch => letters.includes(ch);    
+      if(s.length>=2){    
+        const a=s[0], b=s.slice(1);    
+        if(isLetter(a) && /^\d+$/.test(b)){    
+          const j = letters.indexOf(a); const i = parseInt(b,10)-1; if(inBounds(i,j)) return {i,j};    
+        }    
+      }    
+      if(/^\d+[A-Z]$/.test(s)){    
+        const num = parseInt(s,10)-1; const j = letters.indexOf(s[s.length-1]); if(inBounds(num,j)) return {i:num,j};    
+      }    
+      const m = s.match(/^(\d+)\s+(\d+)$/);    
+      if(m){ const i=parseInt(m[1],10)-1, j=parseInt(m[2],10)-1; if(inBounds(i,j)) return {i,j}; }    
+      return null;    
+    }    
+
+    // ===== Pattern scoring (advanced, upgraded) =====    
+    function lineCount(i,j,di,dj,color){    
+      let c=1, open=0;    
+      let ni=i+di, nj=j+dj; while(inBounds(ni,nj)&&grid[ni][nj]===color){c++; ni+=di; nj+=dj;} if(inBounds(ni,nj)&&grid[ni][nj]===0) open++;    
+      ni=i-di; nj=j-dj; while(inBounds(ni,nj)&&grid[ni][nj]===color){c++; ni-=di; nj-=dj;} if(inBounds(ni,nj)&&grid[ni][nj]===0) open++;    
+      return {count:c, openEnds:open};    
+    }    
+
+    // 더 공격적 가중치 + 열린4 최우선
+    function scorePattern(cnt, open){    
+      if(cnt>=5) return 1e9;    
+      if(cnt===4) return open===2? 260000 : 100000;    
+      if(cnt===3) return open===2? 28000  : 5000;    
+      if(cnt===2) return open===2? 1800   : 320;    
+      if(cnt===1) return open===2? 90     : 15;    
+      return 0;    
+    }    
+
+    function scorePoint(i,j,color){    
+      if(grid[i][j]!==0) return -Infinity;    
+      let attack=0, defense=0, threats=0, dbl=0;    
+      for(const [di,dj] of DIRS){ 
+        const {count,openEnds}=lineCount(i,j,di,dj,color); 
+        attack+=scorePattern(count,openEnds); 
+        if((count===4&&openEnds>=1) || (count===3&&openEnds===2)) threats++; 
+      }    
+      const opp = (color===1?2:1);    
+      for(const [di,dj] of DIRS){ 
+        const {count,openEnds}=lineCount(i,j,di,dj,opp); 
+        defense+=0.94*scorePattern(count,openEnds); 
+      }    
+      if(threats>=2) dbl += 38000; // double-threat (더블 쓰리 등) 보너스    
+      const c=(N-1)/2; const d=Math.hypot(i-c,j-c); const centerBias = 220/(1+d);    
+      return attack + defense + dbl + centerBias;    
+    }    
+
+    function anyStone(){ for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(grid[i][j]!==0) return true; return false; }    
+    function hasNeighbor(i,j,dist){ 
+      for(let di=-dist;di<=dist;di++){ 
+        for(let dj=-dist;dj<=dist;dj++){ 
+          if(di===0&&dj===0) continue; 
+          const ni=i+di,nj=j+dj; 
+          if(inBounds(ni,nj)&&grid[ni][nj]!==0) return true; 
+        } } 
+      return false; 
+    }    
+
+    function candidateMoves(maxCand, color){    
+      const cands=[]; const have=anyStone();    
+      if(!have){ const c=(N-1)>>1; return [{i:c,j:c,score:0}]; }    
+      for(let i=0;i<N;i++){    
+        for(let j=0;j<N;j++){    
+          if(grid[i][j]!==0) continue; 
+          if(!hasNeighbor(i,j,2)) continue; 
+          const s=scorePoint(i,j,color); 
+          if(s>-Infinity) cands.push({i,j,score:s});    
+        }    
+      }    
+      // 최근 수 근처 가중치(정렬 타이 브레이커)
+      const last = moves[moves.length-1];
+      if(last){
+        cands.forEach(m=>{ m.score += 20 / (1+Math.hypot(m.i-last.i,m.j-last.j)); });
+      }
+      cands.sort((a,b)=>b.score-a.score); 
+      return cands.slice(0, maxCand);    
+    }    
+
+    function evaluateBoard(){    
+      // White 관점 평가    
+      let white=0, black=0;    
+      for(let i=0;i<N;i++){    
+        for(let j=0;j<N;j++){    
+          const color = grid[i][j]; if(!color) continue;    
+          for(const [di,dj] of DIRS){    
+            const pi=i-di,pj=j-dj; if(inBounds(pi,pj) && grid[pi][pj]===color) continue;    
+            let cnt=0; let ni=i,nj=j; while(inBounds(ni,nj)&&grid[ni][nj]===color){cnt++; ni+=di; nj+=dj;}    
+            let open=0; if(inBounds(ni,nj)&&grid[ni][nj]===0) open++;    
+            const bi=i-di,bj=j-dj; if(inBounds(bi,bj)&&grid[bi][bj]===0) open++;    
+            const sc = scorePattern(cnt, open);    
+            if(color===2) white += sc; else black += sc;    
+          }    
+        }    
+      }    
+      return white - black;    
+    }    
+
+    // ===== 추가: 전술성 검사 (즉승/즉방어/열린4/더블 위협) =====
+    function isWinMove(i,j,color){
+      if(grid[i][j]) return false; grid[i][j]=color; const w = checkWin(i,j); grid[i][j]=0; return !!w;
+    }
+    function makesOpenFour(i,j,color){
+      if(grid[i][j]) return false; 
+      grid[i][j]=color; 
+      let ok=false;
+      for(const [di,dj] of DIRS){ const {count,openEnds}=lineCount(i,j,di,dj,color); if(count===4 && openEnds===2){ ok=true; break; } }
+      grid[i][j]=0; 
+      return ok;
+    }
+    function countOpenThreesAfter(i,j,color){
+      if(grid[i][j]) return 0; grid[i][j]=color;
+      let cnt=0;
+      for(const [di,dj] of DIRS){
+        const {count,openEnds}=lineCount(i,j,di,dj,color);
+        if(count===3 && openEnds===2) cnt++;
+      }
+      grid[i][j]=0; return cnt;
+    }
+    function makesDoubleThreat(i,j,color){
+      return countOpenThreesAfter(i,j,color) >= 2;
+    }
+
+    // ===== Minimax w/ Alpha-Beta & Budget =====    
+    function aiParams(){    
+      const level = levelSel.value;    
+      if(level==='easy') return {depth:1, rootCand:8,  nodeCand:6,  maxNodes:5000,  timeMs:90};    
+      if(level==='mid')  return {depth:2, rootCand:12, nodeCand:8,  maxNodes:16000, timeMs:180};    
+      return                {depth:3, rootCand:16, nodeCand:10, maxNodes:36000, timeMs:300}; // pro    
+    }    
+
+    function minimax(depth, alpha, beta, color, params, budget){    
+      if(winner){ return (winner===2? 1e9 : -1e9); }    
+      if(depth===0 || performance.now() > budget.deadline || budget.nodes > params.maxNodes){ return evaluateBoard(); }    
+
+      const maxCand = depth===params.depth ? params.rootCand : params.nodeCand;    
+      const cands = candidateMoves(maxCand, color);    
+      if(!cands.length){ return evaluateBoard(); }    
+
+      if(color===2){ // maximizing (White)    
+        let best = -Infinity;    
+        for(const {i,j} of cands){    
+          if(!place(i,j,2)) continue; budget.nodes++;    
+          const fin = winner? (winner===2? 1e9 : -1e9) : minimax(depth-1, alpha, beta, 1, params, budget);    
+          unplace(); if(fin>best) best=fin; if(best>alpha) alpha=best; 
+          if(beta<=alpha || performance.now()>budget.deadline) break;    
+        }    
+        return best;    
+      } else { // minimizing (Black)    
+        let best = Infinity;    
+        for(const {i,j} of cands){    
+          if(!place(i,j,1)) continue; budget.nodes++;    
+          const fin = winner? (winner===2? 1e9 : -1e9) : minimax(depth-1, alpha, beta, 2, params, budget);    
+          unplace(); if(fin<best) best=fin; if(best<beta) beta=best; 
+          if(beta<=alpha || performance.now()>budget.deadline) break;    
+        }    
+        return best;    
+      }    
+    }    
+
+    function findImmediate(color){    
+      for(let i=0;i<N;i++){    
+        for(let j=0;j<N;j++){    
+          if(grid[i][j]!==0) continue;    
+          if(isWinMove(i,j,color)) return {i,j};  
+        }    
+      }    
+      return null;    
+    }    
+
+    // ===== 고도화된 백의 선택: 강제수 우선 → 탐색 =====
+    function aiBestMove(){    
+      // 0) 즉승 / 즉방어
+      const winNow = findImmediate(2); if(winNow) return winNow;    
+      const blockNow = findImmediate(1); if(blockNow) return blockNow;    
+
+      // 1) 열린4 만들기 / 상대 열린4 봉쇄
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++) 
+        if(!grid[i][j] && hasNeighbor(i,j,2) && makesOpenFour(i,j,2)) return {i,j};
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++) 
+        if(!grid[i][j] && hasNeighbor(i,j,2) && makesOpenFour(i,j,1)) return {i,j};
+
+      // 2) 더블 위협(열린3 두 개 이상)
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++) 
+        if(!grid[i][j] && hasNeighbor(i,j,2) && makesDoubleThreat(i,j,2)) return {i,j};
+
+      // 3) 탐색 (알파-베타)
+      const params = aiParams(); 
+      const rootCands = candidateMoves(params.rootCand, 2);    
+      let choice = rootCands[0]||null, bestVal=-Infinity;    
+      const budget = {deadline: performance.now() + params.timeMs, nodes:0};    
+      for(const {i,j} of rootCands){    
+        if(performance.now() > budget.deadline) break;    
+        if(!place(i,j,2)) continue;    
+        const val = minimax(params.depth-1, -Infinity, Infinity, 1, params, budget);    
+        unplace();    
+        if(val>bestVal){ bestVal=val; choice={i,j}; }    
+      }    
+      return choice;    
+    }    
+
+    function thinkAndMoveAI(){    
+      if(winner) return; aiThinking = true; updateStatus();    
+      setTimeout(()=>{    
+        const move = aiBestMove();    
+        if(move){ place(move.i, move.j, 2); drawAll(); }    
+        aiThinking = false; if(!winner){ turn = 1; }    
+        updateStatus();    
+      }, 10);    
+    }    
+
+    // ===== User flow (좌표 입력 + 터치 입력) =====    
+    function playFromInput(){    
+      if(winner || aiThinking) return;    
+      if(turn!==1){ return; }    
+      const c = parseCoord(coordInput.value);    
+      if(!c){ msgEl.textContent = '좌표를 다시 입력하세요 (예: H8 또는 8,8)'; return; }    
+      if(grid[c.i][c.j]!==0){ msgEl.textContent = '그 칸은 이미 둘 수 없습니다'; return; }    
+      place(c.i,c.j,1); drawAll();    
+      if(winner){ updateStatus(); return; }    
+      coordInput.value=''; turn=2; updateStatus(); thinkAndMoveAI();    
+    }    
+
+    function undo(){ 
+      if(aiThinking) return; 
+      if(!moves.length) return; 
+      const last=moves[moves.length-1]; 
+      if(last && last.color===2) unplace(); 
+      if(moves.length) unplace(); 
+      turn=1; drawAll(); updateStatus(); 
+    }    
+    function reset(){ initBoard(); }    
+
+    // ===== Events =====    
+    playBtn.addEventListener('click', playFromInput);    
+    coordInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ playFromInput(); } });    
+    undoBtn.addEventListener('click', undo);    
+    resetBtn.addEventListener('click', reset);    
+    sizeSel.addEventListener('change', ()=>{ N=parseInt(sizeSel.value,10); initBoard(); drawLabels(); });    
+    levelSel.addEventListener('change', ()=>{ updateStatus(); });    
+    window.addEventListener('resize', ()=>{ resizeCanvas(); drawAll(); drawLabels(); });    
+
+    // === 터치/클릭 → 격자 좌표 매핑(보드 중앙 정렬 고려, 스냅 + 허용 반경) ===  
+    function mapToGrid(clientX, clientY){  
+      const rect = canvas.getBoundingClientRect();  
+      const W = rect.width, H = rect.height;  
+      const boardPx = (N-1)*cell + padding*2;  
+      const originX = rect.left + (W - boardPx)/2 + padding;  
+      const originY = rect.top  + (H - boardPx)/2 + padding;  
+      const gx = (clientX - originX) / cell;   // 열 좌표(실수)  
+      const gy = (clientY - originY) / cell;   // 행 좌표(실수)  
+      const j = Math.round(gx);  
+      const i = Math.round(gy);  
+      if(i<0||i>=N||j<0||j>=N) return null;  
+      const distPx = Math.hypot((gx-j)*cell, (gy-i)*cell);  
+      const tol = Math.max(10, Math.min(22, cell*0.45)); // 작은 화면에서도 관대  
+      if(distPx > tol) return null;  
+      return {i,j};  
+    }  
+
+    // === 보드 터치로 흑 두기 (좌표 입력과 병행)  
+    function handleBoardTap(evt){  
+      if(winner || aiThinking || turn!==1) return;  
+      const c = mapToGrid(evt.clientX, evt.clientY);  
+      if(!c) return;  
+      if(grid[c.i][c.j]!==0) return;  
+      place(c.i, c.j, 1); drawAll();  
+      if(winner){ updateStatus(); return; }  
+      turn = 2; updateStatus(); thinkAndMoveAI();  
+    }  
+
+    // === 포인터/클릭 이벤트(모바일/데스크톱 겸용)  
+    canvas.addEventListener('pointerdown', (e)=>{ e.preventDefault(); handleBoardTap(e); }, {passive:false});  
+    canvas.addEventListener('click', (e)=> handleBoardTap(e));  
+
+    // boot    
+    initBoard();
+
+  </script>  
+</body>  
+</html>
