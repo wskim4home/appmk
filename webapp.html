@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GenAI 실무활용사례</title>
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://k-bizpost.myds.me/webapp11.html" />
+
+  <!-- Preconnect (속도 개선) -->
+  <link rel="preconnect" href="https://mailsend-worker.wskim4home.workers.dev" crossorigin />
+  <link rel="preconnect" href="https://gofile.me" crossorigin />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="K-bizpost" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:title" content="GenAI 실무활용사례" />
+  <meta property="og:description" content="GenAI는 어떤 것을 사용하는가보다 어떻게 사용하는가가 핵심입니다." />
+  <meta property="og:url" content="https://k-bizpost.myds.me/webapp11.html" />
+  <meta property="og:image" content="https://k-bizpost.myds.me/og/downfree11.png" />
+  <meta property="og:image:secure_url" content="https://k-bizpost.myds.me/og/downfree11.png" />
+  <meta property="og:image:width" content="800" />
+  <meta property="og:image:height" content="200" />
+  <meta property="og:image:alt" content="GenAI 실무활용 자료 다운로드 배너" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GenAI 실무활용사례" />
+  <meta name="twitter:description" content="GenAI는 어떤 것을 사용하는가보다 어떻게 사용하는가가 핵심입니다." />
+  <meta name="twitter:image" content="https://k-bizpost.myds.me/og/downfree11.png" />
+
+  <!-- PWA/색상(선택) -->
+  <meta name="theme-color" content="#0071E3" />
+
+  <style>
+    :root{
+      --apple-blue:#0071E3;
+      --apple-blue-hover:#0077ED;
+      --bg-gradient:linear-gradient(to bottom, #F0F7FF 0%, #FFFFFF 60%);
+      --card-bg:#FFFFFF;
+      --text-main:#1D1D1F;
+      --text-sub:#6E6E73;
+      --line:#E6EAF0;
+
+      --pill-radius:9999px;
+      --pill-height:56px;
+      --pill-padding-x:20px;
+    }
+
+    *,*::before,*::after{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Apple SD Gothic Neo",
+                   "Malgun Gothic",Segoe UI,Roboto,Noto Sans,sans-serif;
+      background:var(--bg-gradient);
+      color:var(--text-main);
+    }
+
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+    .container{
+      width:100%;
+      max-width:560px;
+      margin:60px 16px;
+      padding:40px 28px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:32px;
+      box-shadow:0 12px 28px rgba(0,0,0,.12);
+    }
+
+    h1{ font-size:28px; font-weight:800; margin:0 0 12px; }
+    .desc{ font-size:16px; line-height:1.6; color:var(--text-sub); margin-bottom:22px; }
+
+    .pill,.btn{
+      width:100%; height:var(--pill-height);
+      border-radius:var(--pill-radius);
+      padding-inline:var(--pill-padding-x);
+      font-size:16px;
+    }
+    .pill{
+      border:1px solid #D0D6DF;
+      background:#FAFAFC;
+      margin-bottom:14px;
+      text-align:center;
+    }
+    .pill:focus{
+      outline:none;
+      border-color:var(--apple-blue);
+      background:#fff;
+      box-shadow:0 0 0 4px rgba(0,113,227,.18);
+    }
+
+    .btn{
+      border:none;
+      background:var(--apple-blue);
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+    }
+    .btn:hover{ background:var(--apple-blue-hover); }
+    .btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+    .spinner{
+      width:18px; height:18px; border-radius:50%;
+      border:2px solid rgba(255,255,255,.5);
+      border-top-color:#fff;
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+
+    .msg{ display:none; margin-top:16px; font-size:14px; padding:12px; border-radius:14px; }
+    .msg.ok{ display:block; background:#E6F4EA; color:#117A37; }
+    .msg.err{ display:block; background:#FDEBEC; color:#B00020; }
+
+    .foot{
+      margin-top:22px; font-size:13px; color:var(--text-sub);
+      border-top:1px solid var(--line); padding-top:14px;
+    }
+
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+    .row{ display:flex; gap:8px; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="container" role="main" aria-labelledby="title">
+      <h1 id="title">GenAI 기술동향 및 실무활용 세미나 자료 다운로드</h1>
+      <p class="desc">
+        GenAI는 어떤 것을 사용하는가보다 <strong>어떻게 사용하는가</strong>가 핵심입니다.<br />
+        이메일을 입력하면 다운로드 링크를 보내드립니다.<br />
+        (메일주소를 입력하면, 메일 정보 수집에 동의한 것으로 간주됩니다.)
+      </p>
+
+      <!-- 허니팟(봇 방지) -->
+      <label class="sr-only" for="hp">Leave blank</label>
+      <input id="hp" class="sr-only" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+      <!-- 이메일 입력 + 전송 -->
+      <div class="row" style="flex-direction:column">
+        <input id="email" class="pill" type="email"
+               placeholder="이메일 주소 입력" autocomplete="email" inputmode="email"
+               maxlength="120" aria-label="이메일 주소"
+               pattern="^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" required />
+        <button id="sendBtn" class="btn" type="button" aria-live="polite">
+          <span id="btnText">이메일로 링크 보내기</span>
+          <span id="btnSpin" class="spinner" style="display:none" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div id="msg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="foot">
+        <div>생성시각: <span id="rt"></span></div>
+        <div>ⓘ MPEC 대덕연구단지 은퇴과학자 협동조합, K-bizpost.myds.me 인터넷신문 제공</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ===== 페이지별 설정 =====
+    const API_BASE = "https://mailsend-worker.wskim4home.workers.dev";   // Cloudflare Worker
+    //http://gofile.me/7CsPo/ONYelYAnx";         // 기본 파일 링크
+    
+    const PDF_URL_DEFAULT =
+  "https://raw.githubusercontent.com/wskim4home/appmk/9c95a23b0f79fcd1c17db8a31fda81c28842562f/AI%ED%98%81%EC%8B%A0%EC%82%B0%EC%97%85%EC%9D%84%EC%9C%84%ED%95%9CGenAI%20%EA%B8%B0%EC%88%A0%EC%B6%94%EC%84%B8%20%EB%B0%8F%20%EC%8B%A4%EB%AC%B4%ED%99%9C%EC%9A%A9.pdf";
+    
+    const NOTE_DEFAULT     = "seminar-genai";                             // 스프레드시트 note 태그
+    const SUBJECT_DEFAULT  = "GenAI 실무활용 세미나 자료 링크";
+
+    // URL 파라미터로 note/pdf/subject 덮어쓰기 지원 (?note=..., ?pdf=..., ?subject=...)
+    const qs = new URLSearchParams(location.search);
+    const NOTE    = (qs.get("note")    || NOTE_DEFAULT).trim();
+    const PDF_URL = (qs.get("pdf")     || PDF_URL_DEFAULT).trim();
+    const SUBJECT = (qs.get("subject") || SUBJECT_DEFAULT).trim();
+
+    // 런타임 표기
+    document.getElementById('rt').textContent =
+      new Date().toLocaleString('ko-KR', { hour12:false });
+
+    // 요소
+    const emailEl = document.getElementById('email');
+    const msgEl   = document.getElementById('msg');
+    const btn     = document.getElementById('sendBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpin = document.getElementById('btnSpin');
+
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const show = (type, text)=>{
+      msgEl.className = 'msg ' + (type==='err' ? 'err' : 'ok');
+      msgEl.textContent = text;
+    };
+
+    const setBusy = (b)=>{
+      btn.disabled = b;
+      btnSpin.style.display = b ? 'inline-block' : 'none';
+      btnText.textContent = b ? '전송 중… 잠시만요' : '이메일로 링크 보내기';
+    };
+
+    // fetch 타임아웃/1회 재시도
+    async function postWithRetry(url, init, timeoutMs=8000){
+      const tryOnce = async ()=>{
+        const ac = new AbortController();
+        const t = setTimeout(()=>ac.abort(), timeoutMs);
+        try{
+          return await fetch(url, { ...init, signal: ac.signal });
+        } finally {
+          clearTimeout(t);
+        }
+      };
+      let r = await tryOnce();
+      if (!r.ok) {
+        // 1회 재시도 (잠깐 대기)
+        await new Promise(res=>setTimeout(res, 300));
+        r = await tryOnce();
+      }
+      return r;
+    }
+
+    async function submitEmail(){
+      // 허니팟 (봇이면 중단)
+      if (document.getElementById('hp').value) return;
+
+      const email = emailEl.value.trim();
+      if (!email || !emailRe.test(email)){
+        show('err','올바른 이메일을 입력하세요.');
+        emailEl.focus();
+        return;
+      }
+
+      setBusy(true);
+      show('ok','요청을 전송 중입니다…');
+
+      try{
+        const res = await postWithRetry(
+          API_BASE.replace(/\/$/,'') + '/send-link',
+          {
+            method:'POST',
+            mode:'cors',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              to: email,
+              link: PDF_URL,
+              subject: SUBJECT,
+              note: NOTE
+            })
+          }
+        );
+
+        const txt = await res.text();
+        let j = {};
+        try { j = JSON.parse(txt); } catch {}
+
+        if (!res.ok || !j.ok){
+          throw new Error(j.error || ('HTTP ' + res.status + ' ' + txt));
+        }
+
+        show('ok','이메일로 링크를 발송했습니다. (스팸함도 확인해주세요)');
+        emailEl.value = '';
+      }catch(e){
+        show('err','발송 실패: ' + (e?.message || e));
+      }finally{
+        setBusy(false);
+      }
+    }
+
+    btn.addEventListener('click', submitEmail);
+    emailEl.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') submitEmail(); });
+
+    // 접근성: 최초 포커스
+    emailEl.focus();
+  </script>
+  <noscript>이 페이지를 사용하려면 브라우저에서 자바스크립트를 활성화하세요.</noscript>
+</body>
+</html>
